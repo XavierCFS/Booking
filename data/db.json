@@ -1,0 +1,85 @@
+{
+  "config": {
+    "booking_max_days": 30
+  },
+  "trainers": [
+    {
+      "id": "trainer_001",
+      "line_user_id": "U1234567890abcdef",
+      "name": "陳大雄",
+      "nickname": "大雄教練",
+      "avatar_url": "https://api.dicebear.com/7.x/pixel-art/svg?seed=Trainer1",
+      "phone": "0912345678",
+      "gender": "male",
+      "experience": "8年私人健身教練經驗、NSCA-CPT 國際認證、自由重量與體態雕塑專長",
+      "google_calendar_linked": true
+    }
+  ],
+  "students": [
+    {
+      "id": "stu_001",
+      "line_user_id": "U9876543210fedcba",
+      "trainer_id": "trainer_001",
+      "name": "王小明",
+      "phone": "0987654321",
+      "gender": "male",
+      "birthday": "1995-05-20",
+      "google_calendar_linked": true,
+      "notes": [
+        { "id": "n1", "date": "2026-09-01", "content": "學員有左膝舊傷，需注意蹲舉姿勢" }
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "id": "pkg_101",
+      "student_id": "stu_001",
+      "term_number": 1,
+      "total_lessons": 10,
+      "remaining_lessons": 2,
+      "price": 15000,
+      "payment_date": "2026-06-01",
+      "payment_method": "轉帳",
+      "status": "active",
+      "created_at": "2026-06-01T10:00:00Z"
+    },
+    {
+      "id": "pkg_102",
+      "student_id": "stu_001",
+      "term_number": 2,
+      "total_lessons": 10,
+      "remaining_lessons": 10,
+      "price": 15000,
+      "payment_date": "2026-09-25",
+      "payment_method": "現金",
+      "status": "active",
+      "created_at": "2026-09-25T14:30:00Z"
+    }
+  ],
+  "booking_requests": [
+    {
+      "id": "req_001",
+      "student_id": "stu_001",
+      "trainer_id": "trainer_001",
+      "options": [
+        "2026-10-10 14:00",
+        "2026-10-11 10:00",
+        "2026-10-12 16:00"
+      ],
+      "status": "pending",
+      "confirmed_time": null,
+      "created_at": "2026-10-01T08:00:00Z"
+    }
+  ],
+  "class_logs": [
+    {
+      "id": "log_001",
+      "student_id": "stu_001",
+      "package_id": "pkg_101",
+      "datetime": "2026-10-02 14:00",
+      "location": "台北健身房 A 館",
+      "status": "completed",
+      "added_to_google_calendar": true
+    }
+  ]
+}
