@@ -175,7 +175,7 @@
     </div>
   </div>
 
-  <script>
+    <script>
     const CONFIG = {
       LIFF_ID: "2011857437-xFUbKdAg",
       GITHUB_TOKEN: "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",
@@ -185,36 +185,52 @@
 
     let allExpanded = true;
     let currentUserId = "";
-    let dbData = {};
+    let dbData = null;
     let currentStudent = null;
 
     // 1. 初始化 LINE LIFF
     async function initLiff() {
+      const greetingEl = document.getElementById('user-greeting');
       try {
+        greetingEl.innerText = "正在連線 LINE...";
         await liff.init({ liffId: CONFIG.LIFF_ID });
-        if (!liff.isLoggedIn()) {
+        
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile();
+          currentUserId = profile.userId;
+        } else {
           liff.login();
           return;
         }
-        const profile = await liff.getProfile();
-        currentUserId = profile.userId;
       } catch (err) {
-        console.warn("未在 LINE 環境中或測試模式，預設體驗測試");
-        currentUserId = "U_TEST_USER_" + Math.floor(Math.random() * 1000); 
+        console.warn("未在 LINE 環境或 LIFF 測試模式，使用預設測試 ID:", err);
+        currentUserId = "U_TEST_USER_123";
       }
       
-      await loadGitHubDB();
-      routeUser(currentUserId);
+      try {
+        greetingEl.innerText = "正在讀取資料庫...";
+        await loadGitHubDB();
+        routeUser(currentUserId);
+      } catch (err) {
+        // 若出錯，直接把錯誤原因顯示在畫面上！
+        greetingEl.style.color = "red";
+        greetingEl.innerText = `⚠️ 載入失敗: ${err.message}`;
+      }
     }
 
-    // 2. 讀取 GitHub JSON DB
+    // 2. 讀取 GitHub JSON DB (加入嚴格錯誤檢查)
     async function loadGitHubDB() {
       const url = `https://raw.githubusercontent.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/main/data/db.json?t=${Date.now()}`;
-      try {
-        const res = await fetch(url);
-        dbData = await res.json();
-      } catch (err) {
-        console.error("載入資料庫失敗:", err);
+      const res = await fetch(url);
+      
+      if (!res.ok) {
+        throw new Error(`找不到 db.json (HTTP ${res.status})。請確認 GitHub 上是否有 data/db.json，且 Repo 設為 Public！`);
+      }
+
+      dbData = await res.json();
+
+      if (!dbData || !dbData.students || !dbData.trainers) {
+        throw new Error("db.json 內容格式不正確，缺少 students 或 trainers 欄位！");
       }
     }
 
@@ -274,7 +290,7 @@
         document.getElementById('register-view').style.display = 'none';
         renderStudentView(newStudent);
       } else {
-        alert("⚠️ 註冊儲存失敗，請再試一次。");
+        alert("⚠️️ 註冊儲存失敗，請再試一次。");
       }
     }
 
@@ -283,8 +299,9 @@
       currentStudent = student;
       document.getElementById('student-view').style.display = 'block';
       
-      // 抬頭名稱（可點擊看個人資料）
-      document.getElementById('user-greeting').innerHTML = `
+      const greetingEl = document.getElementById('user-greeting');
+      greetingEl.style.color = "var(--pixel-text)";
+      greetingEl.innerHTML = `
         嗨！<span style="color: var(--pixel-primary); cursor: pointer; text-decoration: underline;" onclick="openProfileModal()">${student.name} 👤</span>
       `;
 
@@ -292,15 +309,15 @@
       document.getElementById('coach-name-tag').innerText = `🏋️ 專屬教練：${coach ? coach.nickname || coach.name : '未指定'}`;
 
       // 第一區塊：最近一期預約
-      const nextLog = dbData.class_logs.find(l => l.student_id === student.id && l.status === 'scheduled');
+      const nextLog = (dbData.class_logs || []).find(l => l.student_id === student.id && l.status === 'scheduled');
       document.getElementById('next-class-info').innerHTML = nextLog ? `
         <p><strong>時間：</strong> ${nextLog.datetime}</p>
         <p><strong>地點：</strong> ${nextLog.location}</p>
         <p><strong>行事曆：</strong> ${nextLog.added_to_google_calendar ? '✅ 已同步' : '❌ 未同步'}</p>
       ` : '<p style="color:#888;">近期無已確認課程，請於下方提交 Top 3 預約時間！</p>';
 
-      // 第二區塊：期數與堂數 (按期數升冪排序，FIFO 優先扣最早)
-      const pkgs = dbData.packages
+      // 第二區塊：期數與堂數
+      const pkgs = (dbData.packages || [])
         .filter(p => p.student_id === student.id)
         .sort((a, b) => a.term_number - b.term_number);
 
@@ -315,7 +332,7 @@
       `).join('') || '<p style="color:#888;">尚無購買期數紀錄</p>';
 
       // 第四區塊：歷史紀錄
-      const history = dbData.class_logs.filter(l => l.student_id === student.id && l.status === 'completed');
+      const history = (dbData.class_logs || []).filter(l => l.student_id === student.id && l.status === 'completed');
       document.getElementById('class-history-list').innerHTML = history.map(h => `
         <div style="border-bottom:1px dashed #ccc; padding:6px 0;">🕒 ${h.datetime} - ${h.location}</div>
       `).join('') || '<p style="color:#888;">尚無歷史紀錄</p>';
@@ -332,7 +349,6 @@
         document.getElementById('trainer-view').style.display = 'block';
         document.getElementById('user-greeting').innerText = `教練好，${trainer.name}`;
       } else {
-        // 新用戶 ➔ 開啟註冊表單
         document.getElementById('user-greeting').innerText = "歡迎！請先完成註冊";
         renderRegisterForm();
       }
@@ -342,8 +358,8 @@
     function renderRegisterForm() {
       document.getElementById('register-view').style.display = 'block';
       const trainerSelect = document.getElementById('reg-trainer');
-      trainerSelect.innerHTML = dbData.trainers.map(t => `
-        <option value="${t.id}">${t.nickname || t.name} (${t.experience.substring(0, 15)}...)</option>
+      trainerSelect.innerHTML = (dbData.trainers || []).map(t => `
+        <option value="${t.id}">${t.nickname || t.name} (${(t.experience || '').substring(0, 15)}...)</option>
       `).join('');
     }
 
@@ -400,6 +416,7 @@
       document.getElementById('toggle-all-btn').innerText = allExpanded ? '全部收納' : '全部展開';
     }
 
+    // 啟動 LIFF 流程
     initLiff();
   </script>
 </body>
