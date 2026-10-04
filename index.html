@@ -8,7 +8,7 @@
   <!-- LINE LIFF SDK -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    /* 彈出視窗 (Modal) 像素風格 */
+    /* 彈出視窗 (Modal) 像素風格與表單樣式 */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -175,7 +175,10 @@
     </div>
   </div>
 
-    <script>
+  <script>
+    // -------------------------------------------------------------
+    // 設定區（包含你所有的最新參數）
+    // -------------------------------------------------------------
     const CONFIG = {
       LIFF_ID: "2011857437-xFUbKdAg",
       GITHUB_TOKEN: "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",
@@ -203,7 +206,7 @@
           return;
         }
       } catch (err) {
-        console.warn("未在 LINE 環境或 LIFF 測試模式，使用預設測試 ID:", err);
+        console.warn("未在 LINE 環境或測試模式，預設測試 ID:", err);
         currentUserId = "U_TEST_USER_123";
       }
       
@@ -212,45 +215,77 @@
         await loadGitHubDB();
         routeUser(currentUserId);
       } catch (err) {
-        // 若出錯，直接把錯誤原因顯示在畫面上！
         greetingEl.style.color = "red";
         greetingEl.innerText = `⚠️ 載入失敗: ${err.message}`;
       }
     }
 
-    // 2. 讀取 GitHub JSON DB (加入嚴格錯誤檢查)
+    // 2. 從 GitHub 讀取 JSON 資料庫 (自動嘗試多種 Raw 網址格式)
     async function loadGitHubDB() {
-      const url = `https://raw.githubusercontent.com/XavierCFS/Booking/refs/heads/main/data/db.json?t=${Date.now()}`;
-      const res = await fetch(url);
-      
-      if (!res.ok) {
-        throw new Error(`找不到 db.json (HTTP ${res.status})。請確認 GitHub 上是否有 data/db.json，且 Repo 設為 Public！`);
+      const timestamp = Date.now();
+      const urls = [
+        `https://raw.githubusercontent.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/refs/heads/main/data/db.json?t=${timestamp}`,
+        `https://raw.githubusercontent.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/main/data/db.json?t=${timestamp}`,
+        `https://raw.githubusercontent.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/master/data/db.json?t=${timestamp}`
+      ];
+
+      let lastStatus = 404;
+      for (const url of urls) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            dbData = await res.json();
+            return;
+          }
+          lastStatus = res.status;
+        } catch (e) {
+          console.warn("嘗試讀取網址失敗:", url, e);
+        }
       }
 
-      dbData = await res.json();
-
-      if (!dbData || !dbData.students || !dbData.trainers) {
-        throw new Error("db.json 內容格式不正確，缺少 students 或 trainers 欄位！");
-      }
+      throw new Error(`無法讀取 db.json (HTTP ${lastStatus})。請確認 GitHub 專案有 data/db.json 且設為 Public！`);
     }
 
-    // 3. 寫回 GitHub DB
+    // 3. 寫回 GitHub DB (帶有精確錯回報與 UTF-8 中文安全 Base64)
     async function updateGitHubDB(commitMessage) {
-      const apiUrl = `https://raw.githubusercontent.com/XavierCFS/Booking/refs/heads/main/data/db.json`;
+      const owner = CONFIG.GITHUB_OWNER;
+      const repo = CONFIG.GITHUB_REPO;
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/data/db.json`;
+      
       try {
+        // Step A: 取得目前的 SHA 版本
         const getRes = await fetch(apiUrl, {
-          headers: { "Authorization": `Bearer ${CONFIG.GITHUB_TOKEN}` }
+          headers: { 
+            "Authorization": `Bearer ${CONFIG.GITHUB_TOKEN}`,
+            "Accept": "application/vnd.github.v3+json"
+          }
         });
+
+        if (!getRes.ok) {
+          const errText = await getRes.text();
+          alert(`⚠️️ 取得檔案 SHA 失敗 (HTTP ${getRes.status})\n原因：${errText}\n請檢查 CONFIG.GITHUB_REPO 是否為 "Booking"！`);
+          return false;
+        }
+
         const fileMeta = await getRes.json();
 
+        // Step B: 轉成安全的 Base64 (支援 UTF-8 中文字元)
         const jsonString = JSON.stringify(dbData, null, 2);
-        const base64Content = btoa(unescape(encodeURIComponent(jsonString)));
+        const encoder = new TextEncoder();
+        const data = encoder.encode(jsonString);
+        let binary = '';
+        for (let i = 0; i < data.length; i++) {
+          binary += String.fromCharCode(data[i]);
+        }
+        const base64Content = btoa(binary);
 
+        // Step C: 發送 PUT 請求寫入 GitHub
         const putRes = await fetch(apiUrl, {
           method: "PUT",
           headers: {
             "Authorization": `Bearer ${CONFIG.GITHUB_TOKEN}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "application/vnd.github.v3+json"
           },
           body: JSON.stringify({
             message: commitMessage,
@@ -259,9 +294,16 @@
           })
         });
 
-        return putRes.ok;
+        if (!putRes.ok) {
+          const errData = await putRes.json();
+          alert(`⚠️ 寫入 GitHub 失敗 (HTTP ${putRes.status})\n訊息：${errData.message}\n請檢查 Token 權限是否包含 Contents (Read & write)！`);
+          return false;
+        }
+
+        return true;
+
       } catch (err) {
-        console.error("寫入 GitHub 失敗:", err);
+        alert(`⚠️ 發生例外錯誤：${err.message}`);
         return false;
       }
     }
@@ -282,6 +324,7 @@
         notes: []
       };
 
+      if (!dbData.students) dbData.students = [];
       dbData.students.push(newStudent);
 
       const isSaved = await updateGitHubDB(`新學員註冊：${newStudent.name}`);
@@ -289,8 +332,6 @@
         alert("🎉 註冊成功！歡迎進入專屬預約頁面。");
         document.getElementById('register-view').style.display = 'none';
         renderStudentView(newStudent);
-      } else {
-        alert("⚠️️ 註冊儲存失敗，請再試一次。");
       }
     }
 
@@ -305,8 +346,8 @@
         嗨！<span style="color: var(--pixel-primary); cursor: pointer; text-decoration: underline;" onclick="openProfileModal()">${student.name} 👤</span>
       `;
 
-      const coach = dbData.trainers.find(t => t.id === student.trainer_id);
-      document.getElementById('coach-name-tag').innerText = `🏋️ 專屬教練：${coach ? coach.nickname || coach.name : '未指定'}`;
+      const coach = (dbData.trainers || []).find(t => t.id === student.trainer_id);
+      document.getElementById('coach-name-tag').innerText = `🏋️️ 專屬教練：${coach ? coach.nickname || coach.name : '未指定'}`;
 
       // 第一區塊：最近一期預約
       const nextLog = (dbData.class_logs || []).find(l => l.student_id === student.id && l.status === 'scheduled');
@@ -316,7 +357,7 @@
         <p><strong>行事曆：</strong> ${nextLog.added_to_google_calendar ? '✅ 已同步' : '❌ 未同步'}</p>
       ` : '<p style="color:#888;">近期無已確認課程，請於下方提交 Top 3 預約時間！</p>';
 
-      // 第二區塊：期數與堂數
+      // 第二區塊：期數與堂數 (按期數升冪排序，FIFO 優先扣最早)
       const pkgs = (dbData.packages || [])
         .filter(p => p.student_id === student.id)
         .sort((a, b) => a.term_number - b.term_number);
@@ -340,8 +381,8 @@
 
     // 6. 用戶身分判斷與導向
     function routeUser(lineId) {
-      const student = dbData.students.find(s => s.line_user_id === lineId);
-      const trainer = dbData.trainers.find(t => t.line_user_id === lineId);
+      const student = (dbData.students || []).find(s => s.line_user_id === lineId);
+      const trainer = (dbData.trainers || []).find(t => t.line_user_id === lineId);
 
       if (student) {
         renderStudentView(student);
@@ -390,7 +431,7 @@
     // Modal 控制：教練簡介
     function openTrainerModal() {
       if (!currentStudent) return;
-      const coach = dbData.trainers.find(t => t.id === currentStudent.trainer_id);
+      const coach = (dbData.trainers || []).find(t => t.id === currentStudent.trainer_id);
       if (!coach) return;
       document.getElementById('trainer-modal-body').innerHTML = `
         <p><strong>教練姓名：</strong> ${coach.name} (${coach.nickname})</p>
