@@ -236,7 +236,7 @@
 
     // 3. 寫回 GitHub DB
     async function updateGitHubDB(commitMessage) {
-      const apiUrl = `https://api.github.com/repos/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/contents/data/db.json`;
+      const apiUrl = `https://raw.githubusercontent.com/XavierCFS/Booking/refs/heads/main/data/db.json`;
       try {
         const getRes = await fetch(apiUrl, {
           headers: { "Authorization": `Bearer ${CONFIG.GITHUB_TOKEN}` }
