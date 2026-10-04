@@ -1,0 +1,92 @@
+/* 簡約像素風格系統 */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@500;700&display=swap');
+
+:root {
+  --pixel-bg: #f4f4f0;
+  --pixel-card: #ffffff;
+  --pixel-border: #222222;
+  --pixel-primary: #5c7cfa;
+  --pixel-accent: #ff6b6b;
+  --pixel-success: #51cf66;
+  --pixel-text: #222222;
+}
+
+body {
+  background-color: var(--pixel-bg);
+  color: var(--pixel-text);
+  font-family: 'Noto Sans TC', sans-serif;
+  margin: 0;
+  padding: 16px;
+}
+
+/* 像素邊框方塊 (Pixel Border Box) */
+.pixel-box {
+  background: var(--pixel-card);
+  border: 4px solid var(--pixel-border);
+  box-shadow: 4px 4px 0px var(--pixel-border);
+  margin-bottom: 16px;
+  padding: 16px;
+  position: relative;
+}
+
+/* 頂部控製區與「全部展開/收納」按鈕 */
+.top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.pixel-btn {
+  background: #ffe066;
+  border: 3px solid var(--pixel-border);
+  box-shadow: 3px 3px 0px var(--pixel-border);
+  padding: 8px 12px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.pixel-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px var(--pixel-border);
+}
+
+/* 可展開/收納區塊 (Collapsible Accordion Block) */
+.pixel-block {
+  border: 3px solid var(--pixel-border);
+  box-shadow: 3px 3px 0px var(--pixel-border);
+  margin-bottom: 12px;
+  background: #fff;
+}
+
+.pixel-block summary {
+  background: #e9ecef;
+  padding: 12px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px dashed transparent;
+}
+
+.pixel-block[open] summary {
+  border-bottom-color: var(--pixel-border);
+  background: #dbe4ff;
+}
+
+.pixel-block .block-content {
+  padding: 16px;
+}
+
+/* 像素標籤與數字 */
+.badge {
+  background: var(--pixel-primary);
+  color: #fff;
+  padding: 2px 8px;
+  border: 2px solid var(--pixel-border);
+  font-size: 12px;
+}
