@@ -220,7 +220,7 @@
 
     // 2. 讀取 GitHub JSON DB (加入嚴格錯誤檢查)
     async function loadGitHubDB() {
-      const url = `https://raw.githubusercontent.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/main/data/db.json?t=${Date.now()}`;
+      const url = `https://raw.githubusercontent.com/XavierCFS/Booking/refs/heads/main/data/db.json?t=${Date.now()}`;
       const res = await fetch(url);
       
       if (!res.ok) {
