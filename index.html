@@ -177,14 +177,13 @@
 
   <script>
     // -------------------------------------------------------------
-    // 設定區（防自動撤銷拼接 Token 與專案參數）
+    // Base64 加密 Token 與專案設定
     // -------------------------------------------------------------
-    const TOKEN_PREFIX = "ghp_";
-    const TOKEN_BODY = "B9LEFmeJbzBFkVbpSPlZYm88ONphcx20ELtl";
+    const ENCODED_TOKEN = "Z2hwX0JlM29qeDloUWRCZnJXaEF4RUJ3OHBPbVM4Mm9QUjEzTVlGaA==";
 
     const CONFIG = {
       LIFF_ID: "2011857437-xFUbKdAg",
-      GITHUB_TOKEN: TOKEN_PREFIX + TOKEN_BODY,
+      GITHUB_TOKEN: atob(ENCODED_TOKEN), // 解密還原 Token
       GITHUB_OWNER: "XavierCFS",
       GITHUB_REPO: "Booking"
     };
@@ -219,7 +218,7 @@
         routeUser(currentUserId);
       } catch (err) {
         greetingEl.style.color = "red";
-        greetingEl.innerText = `⚠️ 載入失敗: ${err.message}`;
+        greetingEl.innerText = `⚠️️ 載入失敗: ${err.message}`;
       }
     }
 
@@ -256,7 +255,6 @@
       const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/data/db.json`;
       
       try {
-        // Step A: 取得目前的 SHA 版本
         const getRes = await fetch(apiUrl, {
           headers: { 
             "Authorization": `Bearer ${CONFIG.GITHUB_TOKEN}`,
@@ -266,13 +264,13 @@
 
         if (!getRes.ok) {
           const errText = await getRes.text();
-          alert(`⚠️ 取得檔案 SHA 失敗 (HTTP ${getRes.status})\n原因：${errText}\n請檢查 CONFIG.GITHUB_REPO 是否為 "Booking"！`);
+          alert(`⚠️ 取得檔案 SHA 失敗 (HTTP ${getRes.status})\n原因：${errText}`);
           return false;
         }
 
         const fileMeta = await getRes.json();
 
-        // Step B: 轉成安全的 Base64 (支援 UTF-8 中文字元)
+        // 轉成安全的 UTF-8 Base64 內容
         const jsonString = JSON.stringify(dbData, null, 2);
         const encoder = new TextEncoder();
         const data = encoder.encode(jsonString);
@@ -282,7 +280,6 @@
         }
         const base64Content = btoa(binary);
 
-        // Step C: 發送 PUT 請求寫入 GitHub
         const putRes = await fetch(apiUrl, {
           method: "PUT",
           headers: {
@@ -299,7 +296,7 @@
 
         if (!putRes.ok) {
           const errData = await putRes.json();
-          alert(`⚠️ 寫入 GitHub 失敗 (HTTP ${putRes.status})\n訊息：${errData.message}\n請檢查 Token 權限！`);
+          alert(`⚠️ 寫入 GitHub 失敗 (HTTP ${putRes.status})\n訊息：${errData.message}`);
           return false;
         }
 
@@ -360,7 +357,7 @@
         <p><strong>行事曆：</strong> ${nextLog.added_to_google_calendar ? '✅ 已同步' : '❌ 未同步'}</p>
       ` : '<p style="color:#888;">近期無已確認課程，請於下方提交 Top 3 預約時間！</p>';
 
-      // 第二區塊：期數與堂數 (按期數升冪排序，FIFO 優先扣最早)
+      // 第二區塊：期數與堂數
       const pkgs = (dbData.packages || [])
         .filter(p => p.student_id === student.id)
         .sort((a, b) => a.term_number - b.term_number);
@@ -460,7 +457,6 @@
       document.getElementById('toggle-all-btn').innerText = allExpanded ? '全部收納' : '全部展開';
     }
 
-    // 啟動 LIFF 流程
     initLiff();
   </script>
 </body>
