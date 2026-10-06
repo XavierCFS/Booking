@@ -45,7 +45,7 @@ footer{margin:24px 0;text-align:center;font-size:13px;color:var(--sub)}
 </style>
 </head>
 <body>
-<main id="app"></main>
+<main id="app"><p class="sub" style="padding:40px 0;text-align:center">載入中…</p></main>
 <script>
 /* ===== 設定 ===== */
 const CONFIG = { LIFF_ID: "2011857437-xFUbKdAg" };  // 填入 LINE LIFF ID；留空 = 示範模式（資料存在本機瀏覽器）
@@ -189,13 +189,18 @@ document.addEventListener("change", e => {
 /* ===== 啟動 ===== */
 (async function init(){
   S.coachMode = /role(=|%3D)coach/.test(location.href);
-  try{
-    if (CONFIG.LIFF_ID){
-      await liff.init({liffId: CONFIG.LIFF_ID});
+  if (CONFIG.LIFF_ID){
+    try{
+      if (typeof liff === "undefined") throw new Error("LINE LIFF SDK 載入失敗，請檢查網路後重試");
+      await Promise.race([liff.init({liffId: CONFIG.LIFF_ID}), new Promise((_, rej) => setTimeout(() => rej(new Error("LIFF 初始化逾時，請確認 LIFF Endpoint URL 與網址相符")), 10000))]);
       if (!liff.isLoggedIn()){ liff.login(); return; }
       const p = await liff.getProfile(); S.uid = p.userId; S.lineName = p.displayName;
+    }catch(err){
+      console.error(err);
+      app.innerHTML = `<div class="card"><h1>無法開啟</h1><p class="sub">LINE 登入初始化失敗：</p><p class="sub">${esc(err.message || err)}</p></div>`;
+      return;
     }
-  }catch(err){ console.error(err); }
+  }
   if (!S.uid) S.uid = new URLSearchParams(location.search).get("uid") || localStorage.cb_uid || (localStorage.cb_uid = "U" + rid());
   render();
 })();
